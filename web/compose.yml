@@ -1,0 +1,11 @@
+services:
+  teleport_web:
+    image: teleport-web
+    container_name: teleport_web
+    ports:
+      - 3010:80
+    networks:
+      - common_bridge
+networks:
+  common_bridge:
+    external: true
