@@ -4,8 +4,8 @@ services:
     container_name: teleport_server
     ports:
       - 3011:8889
-    # volumes:
-    #   - ./config.yml:/app/config.yml
+    volumes:
+      - ./config.yml:/app/config.yml
     environment:
       - TZ=Asia/Shanghai
     networks:

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Server struct {
@@ -15,13 +17,15 @@ type Server struct {
 	Clients map[string]*Client // [登录名]:客户端
 	MapLock sync.RWMutex
 	Chan    chan string
+	DB      *gorm.DB
 }
 
-func NewServer(addr string, port int) *Server {
+func NewServer(addr string, port int, db *gorm.DB) *Server {
 	return &Server{
 		Addr:    addr,
 		Port:    port,
 		Clients: map[string]*Client{},
+		DB:      db,
 	}
 }
 
@@ -29,6 +33,11 @@ func (server *Server) Listen() {
 	http.HandleFunc("/api/login", func(w http.ResponseWriter, r *http.Request) {
 		Login(w, r, server)
 	})
+	http.HandleFunc("/api/register", func(w http.ResponseWriter, r *http.Request) {
+		Register(w, r, server)
+	})
+
+	log.Printf("server listening %v", server.Port)
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", server.Addr, server.Port), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)

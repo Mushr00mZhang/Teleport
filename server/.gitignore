@@ -1,3 +1,5 @@
 __debug*
 *.tar
 *.exe
+db/data
+.DS_Store

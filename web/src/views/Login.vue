@@ -9,8 +9,18 @@
           :error="loginNameCheck.error"
           :error-text="loginNameCheck.text"
         />
-        <md-outlined-text-field label="昵称" v-model="client.nickName" />
+        <md-outlined-text-field
+          label="密码"
+          type="password"
+          v-model="client.password"
+          :error="passwordCheck.error"
+          :error-text="passwordCheck.text"
+        />
+        <!-- <md-outlined-text-field label="昵称" v-model="client.nickName" /> -->
         <md-filled-button type="submit">登录</md-filled-button>
+        <md-outlined-button type="button" @click="router.push({ name: 'register' })">
+          注册
+        </md-outlined-button>
       </form>
     </main>
     <footer class="teleport-login-footer"></footer>
@@ -19,15 +29,17 @@
 <script setup lang="ts">
 import '@material/web/textfield/outlined-text-field';
 import '@material/web/button/filled-button';
+import '@material/web/button/outlined-button';
 import { computed, reactive } from 'vue';
 import { useChatStore } from '@/store/chat';
 import { useRouter } from 'vue-router';
+import CryptoJS from 'crypto-js';
 const router = useRouter();
 const chatStore = useChatStore();
 const client = reactive({
   url: 'api/login',
   loginName: localStorage.getItem('loginName') || '',
-  nickName: localStorage.getItem('nickName') || '',
+  password: '',
   inputting: true,
 });
 
@@ -54,10 +66,24 @@ const loginNameCheck = computed(() => {
     text: '',
   };
 });
+
+const passwordCheck = computed(() => {
+  if (!client.inputting && !client.password)
+    return {
+      error: true,
+      text: '密码不得为空',
+    };
+  return {
+    error: false,
+    text: '',
+  };
+});
+
 const login = async () => {
   client.inputting = false;
-  if (!loginNameCheck.value.error) {
-    chatStore.login(client.loginName, client.nickName);
+  if (!loginNameCheck.value.error && !passwordCheck.value.error) {
+    const hashedPassword = CryptoJS.MD5(client.password).toString();
+    chatStore.login(client.loginName, hashedPassword);
     router.push({
       name: 'main',
     });

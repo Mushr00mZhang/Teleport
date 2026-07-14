@@ -10,8 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"server/models"
+
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 )
 
 const (
@@ -68,6 +71,20 @@ type FileMsg struct {
 	From    string
 	To      string
 	Time    time.Time
+}
+
+type Response struct {
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
+}
+
+func writeJSON(w http.ResponseWriter, status int, resp Response) {
+	w.WriteHeader(status)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("writeJSON error: %v", err)
+	}
 }
 
 func (client *Client) Read(remote string, server *Server) {
@@ -188,25 +205,6 @@ func (client *Client) Read(remote string, server *Server) {
 					}
 				}
 			}
-			// case "file-chunk":
-			// 	msg.Time = time.Now()
-			// 	buf, err := json.Marshal(msg)
-			// 	if err != nil {
-			// 		log.Printf("Marshal error: %v", err)
-			// 	}
-			// 	if msg.To != client.LoginName {
-			// 		if to, ok := server.Clients[msg.To]; ok {
-			// 			for _, ch := range to.Chans {
-			// 				ch <- buf
-			// 			}
-			// 		}
-			// 	} else {
-			// 		for addr, ch := range client.Chans {
-			// 			if addr != remote {
-			// 				ch <- buf
-			// 			}
-			// 		}
-			// 	}
 		}
 	}
 }
@@ -238,13 +236,6 @@ func (client *Client) Write(remote string, server *Server) {
 			}
 			w.Write(buf)
 
-			// Add queued chat messages to the current websocket message.
-			// n := len(ch)
-			// for i := 0; i < n; i++ {
-			// 	w.Write(newline)
-			// 	w.Write(<-ch)
-			// }
-
 			if err := w.Close(); err != nil {
 				return
 			}
@@ -269,31 +260,43 @@ func NewClient(loginName string) *Client {
 func Login(w http.ResponseWriter, r *http.Request, server *Server) {
 	query := r.URL.Query()
 	loginName := query.Get("LoginName")
-	nickName := query.Get("NickName")
-	// buf, err := io.ReadAll(r.Body)
-	// if err != nil {
-	// 	w.WriteHeader(500)
-	// 	return
-	// }
+	password := query.Get("Password")
+
+	// 校验参数
+	if strings.TrimSpace(loginName) == "" || strings.TrimSpace(password) == "" {
+		writeJSON(w, http.StatusUnauthorized, Response{Success: false, Error: "缺少用户名或密码"})
+		return
+	}
+
+	// 校验用户是否存在
+	user, err := models.GetUserByUsername(server.DB, loginName)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			writeJSON(w, http.StatusUnauthorized, Response{Success: false, Error: "用户不存在"})
+			return
+		}
+		log.Printf("GetUserByUsername error: %v", err)
+		writeJSON(w, http.StatusInternalServerError, Response{Success: false, Error: "查询用户失败"})
+		return
+	}
+
+	// 校验密码
+	if !user.VerifyPassword(password) {
+		writeJSON(w, http.StatusUnauthorized, Response{Success: false, Error: "密码错误"})
+		return
+	}
+
 	var client *Client
-	// err = json.Unmarshal(buf, &client)
-	// if err != nil {
-	// 	w.WriteHeader(500)
-	// 	return
-	// }
 	if c, ok := server.Clients[loginName]; ok {
 		client = c
 	} else {
 		client = NewClient(loginName)
-		if nickName != "" {
-			client.NickName = nickName
-		}
-		// client.Conns = map[string]*websocket.Conn{}
-		// client.Chans = map[string]chan []byte{}
+		client.NickName = user.Nickname
 		server.Clients[client.LoginName] = client
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		log.Printf("Upgrade error: %v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -305,4 +308,45 @@ func Login(w http.ResponseWriter, r *http.Request, server *Server) {
 	if len(client.Chans) == 1 {
 		server.Login(client)
 	}
+}
+
+type registerRequest struct {
+	Username string `json:"username"`
+	NickName string `json:"nickname"`
+	Password string `json:"password"`
+}
+
+func Register(w http.ResponseWriter, r *http.Request, server *Server) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, Response{Success: false, Error: "仅支持 POST 请求"})
+		return
+	}
+
+	var req registerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, Response{Success: false, Error: "请求体格式错误"})
+		return
+	}
+
+	if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.Password) == "" {
+		writeJSON(w, http.StatusBadRequest, Response{Success: false, Error: "用户名和密码不能为空"})
+		return
+	}
+
+	if strings.TrimSpace(req.NickName) == "" {
+		req.NickName = req.Username
+	}
+
+	user, err := models.CreateUser(server.DB, req.Username, req.NickName, req.Password)
+	if err != nil {
+		if models.IsUniqueViolation(err) {
+			writeJSON(w, http.StatusConflict, Response{Success: false, Error: "用户名已存在"})
+			return
+		}
+		log.Printf("CreateUser error: %v", err)
+		writeJSON(w, http.StatusInternalServerError, Response{Success: false, Error: "注册失败"})
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, Response{Success: true, Data: user})
 }

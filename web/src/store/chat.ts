@@ -82,17 +82,15 @@ export const useChatStore = defineStore('ws', () => {
   const ws = ref<WebSocket>();
   const messages = reactive<(TextMsg | FileMsg)[]>([]);
   const users = reactive<User[]>([]);
-  const login = (loginName: string, nickName: string) => {
+  const login = (loginName: string, password: string) => {
     const search = new URLSearchParams();
     search.set('LoginName', loginName);
-    search.set('NickName', nickName);
+    search.set('Password', password);
     const url = `${document.head.baseURI.replace(/http(s*)/, 'ws').trimEnd()}api/login?${search}`;
     ws.value = new WebSocket(url);
     ws.value.addEventListener('open', () => {
       localStorage.setItem('loginName', loginName);
-      localStorage.setItem('nickName', nickName);
       user.LoginName = loginName;
-      user.NickName = nickName;
       getUsers();
     });
     ws.value.addEventListener('message', onMessage);
@@ -134,7 +132,7 @@ export const useChatStore = defineStore('ws', () => {
     ws.value.send(JSON.stringify(msg));
     const fileMsg: FileMsg = { ...msg, Time: new Date(), Read: true, Progress: 0 };
     messages.push(fileMsg);
-    //   // NOTE:后续添加续传
+    // NOTE:后续添加续传
     return file.id;
   };
   const sendFileChunk = (chunk: ChunkedBuffer, to: string) => {
@@ -253,6 +251,10 @@ export const useChatStore = defineStore('ws', () => {
           case 'users':
             users.splice(0);
             users.push(...msg.Content);
+            const self = users.find((i) => i.LoginName === user.LoginName);
+            if (self) {
+              user.NickName = self.NickName;
+            }
             break;
           case 'rename':
             break;

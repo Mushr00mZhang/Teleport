@@ -14,7 +14,7 @@ app.mount('#app');
 
 const chatStore = useChatStore();
 router.beforeEach((to, from, next) => {
-  if ((to.name === 'login' || to.path === '/login') && !chatStore.ws) {
+  if ((to.name === 'login' || to.name === 'register') && !chatStore.ws) {
     next();
     return;
   }
