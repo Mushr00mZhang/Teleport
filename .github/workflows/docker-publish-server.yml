@@ -10,7 +10,7 @@ on:
     branches:
       - release
     paths:
-      - docker-publish-server.yml
+      - .github/workflows/docker-publish-server.yml
       - server/**
 
 env:
