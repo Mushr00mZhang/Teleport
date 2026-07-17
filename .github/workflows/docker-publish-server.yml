@@ -1,4 +1,4 @@
-name: Docker
+name: Docker Publish Server
 
 # This workflow uses actions that are not certified by GitHub.
 # They are provided by a third-party and are governed by
@@ -41,8 +41,6 @@ jobs:
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
         uses: sigstore/cosign-installer@v4.1.0
-        with:
-          cosign-release: 'v2.2.4'
 
       # Set up BuildKit Docker container builder to be able to build
       # multi-platform images and export cache
@@ -95,4 +93,9 @@ jobs:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
-        run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+        run: |
+          images=""
+          for tag in ${TAGS}; do
+            images+="${tag}@${DIGEST} "
+          done
+          cosign sign --yes ${images}
