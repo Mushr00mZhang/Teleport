@@ -30,14 +30,6 @@
         <md-outlined-button type="button" @click="router.push({ name: 'login' })">
           返回登录
         </md-outlined-button>
-        <md-outlined-text-field
-          v-if="errorMsg"
-          label="错误"
-          :value="errorMsg"
-          disabled
-          :error="true"
-        />
-        <md-outlined-text-field v-if="successMsg" label="成功" :value="successMsg" disabled />
       </form>
     </main>
     <footer class="teleport-register-footer"></footer>
@@ -50,12 +42,12 @@ import '@material/web/button/filled-button';
 import '@material/web/button/outlined-button';
 import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from '@/composables/useToast';
 import CryptoJS from 'crypto-js';
 
 const router = useRouter();
+const toast = useToast();
 const loading = ref(false);
-const errorMsg = ref('');
-const successMsg = ref('');
 
 const form = reactive({
   username: '',
@@ -89,8 +81,6 @@ const confirmPasswordCheck = computed(() => {
 
 const register = async () => {
   form.inputting = false;
-  errorMsg.value = '';
-  successMsg.value = '';
 
   if (usernameCheck.value.error || passwordCheck.value.error || confirmPasswordCheck.value.error) {
     return;
@@ -110,15 +100,15 @@ const register = async () => {
     });
     const data = await resp.json();
     if (resp.ok && data.success) {
-      successMsg.value = '注册成功，即将跳转登录...';
+      toast.success('注册成功，即将跳转登录...');
       setTimeout(() => {
         router.push({ name: 'login' });
       }, 1500);
     } else {
-      errorMsg.value = data.error || '注册失败';
+      toast.error(data.error || '注册失败');
     }
   } catch (e) {
-    errorMsg.value = '网络错误，请稍后重试';
+    toast.error('网络错误，请稍后重试');
   } finally {
     loading.value = false;
   }

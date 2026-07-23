@@ -82,19 +82,27 @@ export const useChatStore = defineStore('ws', () => {
   const ws = ref<WebSocket>();
   const messages = reactive<(TextMsg | FileMsg)[]>([]);
   const users = reactive<User[]>([]);
-  const login = (loginName: string, password: string) => {
-    const search = new URLSearchParams();
-    search.set('LoginName', loginName);
-    search.set('Password', password);
-    const url = `${document.head.baseURI.replace(/http(s*)/, 'ws').trimEnd()}api/login?${search}`;
-    ws.value = new WebSocket(url);
-    ws.value.addEventListener('open', () => {
-      localStorage.setItem('loginName', loginName);
-      user.LoginName = loginName;
-      getUsers();
+  const login = (loginName: string, password: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const search = new URLSearchParams();
+      search.set('LoginName', loginName);
+      search.set('Password', password);
+      const url = `${document.head.baseURI.replace(/http(s*)/, 'ws').trimEnd()}api/login?${search}`;
+      const socket = new WebSocket(url);
+      const onError = () => {
+        reject(new Error('登录失败，请检查用户名和密码'));
+      };
+      socket.addEventListener('open', () => {
+        ws.value = socket;
+        localStorage.setItem('loginName', loginName);
+        user.LoginName = loginName;
+        socket.addEventListener('message', onMessage);
+        socket.addEventListener('close', onClose);
+        getUsers();
+        resolve();
+      });
+      socket.addEventListener('error', onError);
     });
-    ws.value.addEventListener('message', onMessage);
-    ws.value.addEventListener('close', onClose);
   };
   const sendMsg = (content: string, to: string) => {
     if (!ws.value) return false;

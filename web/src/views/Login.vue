@@ -16,8 +16,9 @@
           :error="passwordCheck.error"
           :error-text="passwordCheck.text"
         />
-        <!-- <md-outlined-text-field label="昵称" v-model="client.nickName" /> -->
-        <md-filled-button type="submit">登录</md-filled-button>
+        <md-filled-button type="submit" :disabled="loading">
+          {{ loading ? '登录中...' : '登录' }}
+        </md-filled-button>
         <md-outlined-button type="button" @click="router.push({ name: 'register' })">
           注册
         </md-outlined-button>
@@ -30,12 +31,15 @@
 import '@material/web/textfield/outlined-text-field';
 import '@material/web/button/filled-button';
 import '@material/web/button/outlined-button';
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useChatStore } from '@/store/chat';
 import { useRouter } from 'vue-router';
+import { useToast } from '@/composables/useToast';
 import CryptoJS from 'crypto-js';
 const router = useRouter();
 const chatStore = useChatStore();
+const toast = useToast();
+const loading = ref(false);
 const client = reactive({
   url: 'api/login',
   loginName: localStorage.getItem('loginName') || '',
@@ -83,10 +87,16 @@ const login = async () => {
   client.inputting = false;
   if (!loginNameCheck.value.error && !passwordCheck.value.error) {
     const hashedPassword = CryptoJS.MD5(client.password).toString();
-    chatStore.login(client.loginName, hashedPassword);
-    router.push({
-      name: 'main',
-    });
+    loading.value = true;
+    try {
+      await chatStore.login(client.loginName, hashedPassword);
+      toast.success('登录成功');
+      router.push({ name: 'main' });
+    } catch (e: any) {
+      toast.error(e?.message || '登录失败，请检查用户名和密码');
+    } finally {
+      loading.value = false;
+    }
   }
 };
 </script>
