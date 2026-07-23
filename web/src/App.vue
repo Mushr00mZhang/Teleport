@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
+import TeleportToast from '@/components/TeleportToast.vue';
 </script>
 
 <template>
   <RouterView />
+  <TeleportToast />
 </template>
 
 <style scoped>
