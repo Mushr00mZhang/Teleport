@@ -1,3 +1,7 @@
 allowBuilds:
   '@parcel/watcher': true
   es5-ext: true
+minimumReleaseAgeExclude:
+  - '@vue/language-core@3.3.8'
+  - sass@1.101.6
+  - vue-tsc@3.3.8
