@@ -43,7 +43,10 @@
           <div
             :class="[
               'teleport-chat-message',
-              { 'teleport-chat-message-self': msg.From === chatStore.user.LoginName },
+              {
+                'teleport-chat-message-self': msg.From === chatStore.user.LoginName,
+                'teleport-chat-message-loading': msg.Type === 'file' && msg.Progress < 1,
+              },
             ]"
           >
             <div class="teleport-chat-message-time">{{ formatTime(msg.Time) }}</div>
@@ -70,11 +73,7 @@
                     check
                   </md-icon>
                 </div>
-                <a
-                  class="teleport-chat-message-content teleport-chat-message-content-file"
-                  :href="msg.Content.Url"
-                  :download="msg.Content.Name"
-                >
+                <div class="teleport-chat-message-content teleport-chat-message-content-file">
                   <img
                     v-if="msg.Content.Type?.includes('image')"
                     class="teleport-chat-message-content-file-image"
@@ -82,9 +81,25 @@
                     :title="msg.Content.Name"
                   />
                   <span v-else>{{ msg.Content.Name }}</span>
-                </a>
+                </div>
               </div>
             </template>
+            <div class="teleport-chat-message-tool">
+              <md-icon-button
+                v-if="msg.Type === 'text' || msg.Content.Type?.includes('image')"
+                @click="copy(msg)"
+                size="small"
+              >
+                <md-icon>content_copy</md-icon>
+              </md-icon-button>
+              <md-icon-button
+                v-if="msg.Type === 'file' && msg.Content.Url"
+                @click="download(msg as FileMsg)"
+                size="small"
+              >
+                <md-icon>download</md-icon>
+              </md-icon-button>
+            </div>
           </div>
         </template>
       </section>
@@ -113,7 +128,7 @@
 </template>
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { useChatStore, type User } from '@/store/chat';
+import { useChatStore, type FileMsg, type TextMsg, type User } from '@/store/chat';
 import '@material/web/textfield/outlined-text-field';
 import '@material/web/button/filled-tonal-button';
 import '@material/web/icon/icon';
@@ -214,6 +229,33 @@ const paste = async (e: ClipboardEvent) => {
   await uploadFile(files, _to);
 };
 document.addEventListener('paste', paste);
+const copy = async (msg: TextMsg | FileMsg) => {
+  switch (msg.Type) {
+    case 'text':
+      await navigator.clipboard.writeText(msg.Content);
+      return;
+    case 'file': {
+      const content = msg.Content;
+      if (!content.Url) return;
+      const mime = content.Type || 'application/octet-stream';
+      try {
+        const blobPromise = fetch(content.Url).then((r) => r.blob());
+        await navigator.clipboard.write([new ClipboardItem({ [mime]: blobPromise })]);
+      } catch {
+        await navigator.clipboard.writeText(content.Name);
+      }
+      return;
+    }
+  }
+};
+const download = (msg: FileMsg) => {
+  if (!msg.Content.Url) return;
+  const a = document.createElement('a');
+  a.href = msg.Content.Url;
+  a.download = msg.Content.Name;
+  a.click();
+  a.remove();
+};
 const formatTime = (time: Date) => {
   return `${time.getFullYear()}-${time.getMonth() + 1}-${time.getDate()} ${String(
     time.getHours(),
@@ -345,6 +387,9 @@ $block-spacing: 8px;
         flex-direction: row;
         justify-content: flex-end;
       }
+      .#{$prefix-class}-message-tool {
+        justify-content: flex-end;
+      }
     }
     &-time {
       color: #aaa;
@@ -392,6 +437,25 @@ $block-spacing: 8px;
         }
       }
     }
+    &-tool {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 6px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      overflow: hidden;
+      md-icon-button {
+        --md-icon-button-icon-size: 12px;
+        --md-icon-button-state-layer-height: 20px;
+        --md-icon-button-state-layer-width: 20px;
+      }
+    }
+  }
+  &-message:hover:not(&-message-loading) > &-message-tool {
+    opacity: 1;
   }
   &-input {
     flex: none;

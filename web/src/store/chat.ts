@@ -39,12 +39,12 @@ type RenameMsg = {
   Type: 'rename';
   Content: string;
 } & BaseMsg;
-type TextMsg = {
+export type TextMsg = {
   Type: 'text';
   Content: string;
   Read: boolean;
 } & BaseMsg;
-type FileMsg = {
+export type FileMsg = {
   Type: 'file';
   Content: {
     Id: string;
