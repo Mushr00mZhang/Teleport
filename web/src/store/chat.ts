@@ -158,9 +158,9 @@ export const useChatStore = defineStore('ws', () => {
     ws.value.send(JSON.stringify(msg));
     return true;
   };
-  const onOpen = (e: Event) => {
-    console.log('open', e);
-  };
+  // const onOpen = (e: Event) => {
+  //   console.log('open', e);
+  // };
   const onMessage = async (e: MessageEvent) => {
     console.log('message', e);
     try {
@@ -172,7 +172,7 @@ export const useChatStore = defineStore('ws', () => {
         const index = Number(String.fromCharCode(...new Int8Array(arrayBuffer.slice(46, 54))));
         const count = Number(String.fromCharCode(...new Int8Array(arrayBuffer.slice(54, 62))));
         const md5 = String.fromCharCode(...new Int8Array(arrayBuffer.slice(62, 94)));
-        const to = String.fromCharCode(...new Int8Array(arrayBuffer.slice(94, 128)));
+        // const to = String.fromCharCode(...new Int8Array(arrayBuffer.slice(94, 128)));
         const buf = arrayBuffer.slice(128);
         console.log(
           `文件分片接收成功 id: ${id} [${String(index + 1).padStart(

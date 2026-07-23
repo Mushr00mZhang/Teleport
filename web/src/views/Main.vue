@@ -267,7 +267,7 @@ const formatTime = (time: Date) => {
 //   e.data;
 // };
 // chatStore.on('message', onMessage);
-const onClose = (e: Event) => {
+const onClose = (_: Event) => {
   alert('服务器已断开');
   router.push('/login');
 };

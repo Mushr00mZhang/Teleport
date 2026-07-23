@@ -13,7 +13,7 @@ app.use(router);
 app.mount('#app');
 
 const chatStore = useChatStore();
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _, next) => {
   if ((to.name === 'login' || to.name === 'register') && !chatStore.ws) {
     next();
     return;

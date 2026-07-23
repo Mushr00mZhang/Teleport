@@ -1,11 +1,11 @@
 let db: IDBDatabase | null = null;
 const init = async () => {
   const request = indexedDB.open('teleport', 1);
-  db = await new Promise((res: (value: IDBDatabase | null) => void, rej) => {
+  db = await new Promise((res: (value: IDBDatabase | null) => void, _) => {
     request.addEventListener(
       'success',
       (event: Event) => res('result' in event ? (event.result as IDBDatabase) : null),
-      { once: true }
+      { once: true },
     );
     request.addEventListener('upgradeneeded', (event: IDBVersionChangeEvent) => {
       const oldDB = 'result' in event ? (event.result as IDBDatabase) : null;
