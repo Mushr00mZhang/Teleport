@@ -2,8 +2,9 @@ FROM node:24-alpine AS builder
 WORKDIR /builder
 COPY . .
 RUN npm config set registry https://registry.npmmirror.com
-RUN yarn install --slient
-RUN yarn build
+RUN npm i pnpm -g
+RUN pnpm i
+RUN pnpm build
 
 FROM nginx:alpine
 WORKDIR /app
